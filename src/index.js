@@ -1,26 +1,30 @@
 import http from 'node:http' 
 
+// Extraindo as variáveis de ambiente para configuração do servidor HTTP
+const {API_HOST, API_PORT, API_PROTOCOL} = process.env
+
+const posts = []
+
 // Criando o servidor HTTP que responde com "Hello world"
 const server = http.createServer((req, res) => {
   
   // Extraindo informações da requisição HTTP
-  const {url, method, headers} = req
+  const {url, method} = req
   // Separando o caminho e os parâmetros da URL
-  const path = url.split('?')[0]
+  const paths = url.split('?').filter(Boolean)
+  const path = paths.at(0) || '/'
   // Extraindo os parâmetros da URL
   // Cada parâmetro é um par chave-valor separado por '='
   const params = url.split('?')[1]?.split('&').map(param => param.split('='))
-  console.log("Method:", method)
-  console.log("Path:", path)
-  console.log("Params:", params)
+
 
   // Roteamento básico de get e post para /products
-  if (path == '/products' && method == 'GET'){
+  if (path == '/posts' && method == 'GET'){
     res.writeHead(200, { 'Content-Type': 'application/json' })
-    return res.end(JSON.stringify({data: [{id: 1, name: 'Product 1'}]}))
+    return res.end(JSON.stringify({data: posts}))
   }
 
-  if (path == '/products' && method == 'POST'){
+  if (path == '/posts' && method == 'POST'){
     const bodyBuffer = []
     let body = null
 
@@ -34,7 +38,7 @@ const server = http.createServer((req, res) => {
       body = JSON.parse(bodyString)
 
       res.writeHead(201, { 'Content-Type': 'application/json' })
-      return res.end(JSON.stringify({message: 'Product created successfully', body}))
+      return res.end(JSON.stringify({message: 'Post created successfully', body}))
     })
     return
   }
@@ -46,7 +50,8 @@ const server = http.createServer((req, res) => {
 
 })
 
-// Iniciando o servidor na porta 8080
-server.listen(8080, () => {
-  console.log('Server running on port 8080')
+// Iniciando o servidor na porta definida nas variáveis de ambiente
+server.listen(API_PORT, () => {
+  console.log(`Server running on ${API_PROTOCOL}://${API_HOST}:${API_PORT}`)
+  console.log('Press Ctrl+C to stop the server')
 })
