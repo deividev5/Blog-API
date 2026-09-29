@@ -1,7 +1,16 @@
 import http from 'node:http' 
+import { nanoid } from 'nanoid'
+import { z } from 'zod'
+import { mastra } from './mastra/index.js'
 
 // Extraindo as variáveis de ambiente para configuração do servidor HTTP
 const {API_HOST, API_PORT, API_PROTOCOL} = process.env
+
+// Schema do post gerado pelo agente de IA
+const postSchema = z.object({
+  titulo: z.string(),
+  content: z.string(),
+})
 
 const posts = []
 
@@ -24,7 +33,7 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify({data: posts}))
   }
 
-  if (path == '/posts' && method == 'POST'){
+  if (path == '/posts/draft' && method == 'POST'){
     const bodyBuffer = []
     let body = null
 
@@ -32,13 +41,38 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => bodyBuffer.push(chunk))
 
     // Tratando o fim da leitura do corpo da requisição HTTP
-    req.on('end', () => {
+    req.on('end', async () => {
       // Convertendo o buffer em string e parseando como JSON
       const bodyString = Buffer.concat(bodyBuffer).toString() 
       body = JSON.parse(bodyString)
 
-      res.writeHead(201, { 'Content-Type': 'application/json' })
-      return res.end(JSON.stringify({message: 'Post created successfully', body}))
+      try {
+        const postAgent = mastra.getAgentById('post-agent')
+
+        // Gera título e conteúdo (markdown) a partir da ideia usando o agente de IA
+        const { object } = await postAgent.generate(
+          `Crie um post de blog a partir da seguinte ideia: ${body.ideia}`,
+          { structuredOutput: { schema: postSchema } }
+        )
+
+        const post = {
+          id: nanoid(),
+          titulo: object.titulo,
+          content: object.content,
+          published_at: null,
+          created_at: new Date(),
+          approved_at: null,
+          rejected_at: null,
+        }
+
+        posts.push(post)
+
+        res.writeHead(201, { 'Content-Type': 'application/json' })
+        return res.end(JSON.stringify({message: 'Post created successfully', post}))
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        return res.end(JSON.stringify({message: 'Failed to generate post', error: error.message}))
+      }
     })
     return
   }
