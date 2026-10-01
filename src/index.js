@@ -2,6 +2,7 @@ import http from 'node:http'
 import { nanoid } from 'nanoid'
 import { z } from 'zod'
 import { mastra } from './mastra/index.js'
+import { pool, runMigrations } from './db/index.js'
 
 // Extraindo as variáveis de ambiente para configuração do servidor HTTP
 const {API_HOST, API_PORT, API_PROTOCOL} = process.env
@@ -12,10 +13,11 @@ const postSchema = z.object({
   content: z.string(),
 })
 
-const posts = []
+// Aplica as migrations pendentes antes do servidor começar a atender requisições
+await runMigrations()
 
 // Criando o servidor HTTP que responde com "Hello world"
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   
   // Extraindo informações da requisição HTTP
   const {url, method} = req
@@ -29,8 +31,14 @@ const server = http.createServer((req, res) => {
 
   // Roteamento básico de get e post para /products
   if (path == '/posts' && method == 'GET'){
-    res.writeHead(200, { 'Content-Type': 'application/json' })
-    return res.end(JSON.stringify({data: posts}))
+    try {
+      const { rows } = await pool.query('SELECT * FROM posts ORDER BY created_at DESC')
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({data: rows}))
+    } catch (error) {
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({message: 'Failed to fetch posts', error: error.message}))
+    }
   }
 
   if (path == '/posts/draft' && method == 'POST'){
@@ -65,10 +73,15 @@ const server = http.createServer((req, res) => {
           rejected_at: null,
         }
 
-        posts.push(post)
+        const { rows } = await pool.query(
+          `INSERT INTO posts (id, titulo, content, published_at, created_at, approved_at, rejected_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           RETURNING *`,
+          [post.id, post.titulo, post.content, post.published_at, post.created_at, post.approved_at, post.rejected_at]
+        )
 
         res.writeHead(201, { 'Content-Type': 'application/json' })
-        return res.end(JSON.stringify({message: 'Post created successfully', post}))
+        return res.end(JSON.stringify({message: 'Post created successfully', post: rows[0]}))
       } catch (error) {
         res.writeHead(500, { 'Content-Type': 'application/json' })
         return res.end(JSON.stringify({message: 'Failed to generate post', error: error.message}))
