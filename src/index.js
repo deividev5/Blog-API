@@ -23,14 +23,8 @@ const server = http.createServer(async (req, res) => {
   // Separando o caminho e os parâmetros da URL
   const paths = url.split("?").filter(Boolean);
   const path = paths.at(0) || "/";
-  // Extraindo os parâmetros da URL
-  /* //Cada parâmetro é um par chave-valor separado por '='
-  const params = url
-    .split("?")[1]
-    ?.split("&")
-    .map((param) => param.split("="));*/
 
-  // Roteamento básico de get e post para /products
+  //Roteamento basico get
   if (path == "/posts" && method == "GET") {
     try {
       const { rows } = await pool.query("SELECT * FROM posts ORDER BY created_at DESC");
@@ -42,6 +36,26 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // Extrai o ID da rota /posts/:id via regex
+  const postIdMatch = path.match(/^\/posts\/([^/]+)$/);
+
+  if (postIdMatch && method == "GET") {
+    const [, id] = postIdMatch;
+    try {
+      const { rows } = await pool.query("SELECT * FROM posts WHERE id = $1", [id]);
+      if (!rows[0]) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "Post not found" }));
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ data: rows[0] }));
+    } catch (error) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ message: "Failed to fetch post", error: error.message }));
+    }
+  }
+
+  // Roteamento básico de post para /posts/draft
   if (path == "/posts/draft" && method == "POST") {
     const bodyBuffer = [];
     let body = null;
