@@ -2,6 +2,10 @@
   "name": "rocketseat-blog-ia-nodejs",
   "version": "1.0.0",
   "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "node --env-file=.env.local --watch src/index.js",
@@ -11,12 +15,13 @@
     "db:migrate:up": "node --env-file=.env.local node_modules/postgrator-cli/index.js",
     "db:migrate:down": "node --env-file=.env.local node_modules/postgrator-cli/index.js 0",
     "env:setup": "cp .env.example .env.local",
-    "local:setup": "npm run env:setup && npm run db:migrate && npm run infra:up"
+    "local:setup": "npm run env:setup && npm run db:migrate && npm run infra:up",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "prepare": "lefthook install"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
   "dependencies": {
     "@mastra/core": "^1.71.0",
     "nanoid": "^6.0.1",
@@ -25,6 +30,15 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "lefthook": "^2.1.15",
+    "lint-staged": "^17.6.0",
+    "oxfmt": "^0.71.0",
+    "oxlint": "^1.86.0",
     "postgrator-cli": "^10.0.0"
+  },
+  "allowScripts": {
+    "lefthook@2.1.15": true
   }
 }
