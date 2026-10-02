@@ -35,6 +35,7 @@
     "nanoid": "^6.0.1",
     "pg": "^8.23.1",
     "postgrator": "^8.0.0",
+    "swagger-ui-dist": "^5.33.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {

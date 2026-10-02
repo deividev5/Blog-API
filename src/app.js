@@ -6,11 +6,33 @@ import { createRouter } from "./server/router.js";
 import { parseJsonBody } from "./server/body.js";
 import { hasValidApiKey } from "./server/auth.js";
 import { postSchema } from "./schemas/post-schema.js";
+import { createOpenApiSpec } from "./docs/openapi.js";
+import { readSwaggerAsset, renderSwaggerHtml } from "./docs/swagger.js";
 
 // Monta o roteador com todas as rotas da API e retorna um servidor HTTP pronto para receber requisições (sem dar listen)
 export function createApp() {
   const { API_KEY } = process.env;
   const router = createRouter();
+
+  router.get("/api/docs", async (req, res) => {
+    res.writeHead(200, { "Content-Type": "text/html" });
+    return res.end(renderSwaggerHtml());
+  });
+
+  router.get("/api/docs/json", async (req, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify(createOpenApiSpec()));
+  });
+
+  router.get("/api/docs/:asset", async (req, res) => {
+    const asset = await readSwaggerAsset(req.params.asset);
+    if (!asset) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ message: "Not Found" }));
+    }
+    res.writeHead(200, { "Content-Type": asset.contentType });
+    return res.end(asset.content);
+  });
 
   router.get("/posts", async (req, res) => {
     const { searchParams } = new URL(req.url, "http://localhost");
