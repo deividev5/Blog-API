@@ -16,6 +16,8 @@
     "db:migrate:down": "node --env-file=.env.local node_modules/postgrator-cli/index.js 0",
     "env:setup": "cp .env.example .env.local",
     "local:setup": "npm run env:setup && npm run db:migrate && npm run infra:up",
+    "build": "docker build -t rocketseat-blog-ia-nodejs:latest .",
+    "docker:run": "docker run --rm -p 8080:8080 --env-file .env.local --network rocketseat-blog-ia-nodejs_default -e DATABASE_URL=postgres://user:postgres@postgres:5432/blog_ia rocketseat-blog-ia-nodejs:latest",
     "lint": "oxlint .",
     "lint:fix": "oxlint . --fix",
     "format": "oxfmt --write .",
