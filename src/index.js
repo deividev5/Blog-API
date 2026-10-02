@@ -22,7 +22,9 @@ const router = createRouter();
 
 router.get("/posts", async (req, res) => {
   try {
-    const { rows } = await pool.query("SELECT * FROM posts ORDER BY created_at DESC");
+    const { rows } = await pool.query(
+      "SELECT * FROM posts WHERE published_at IS NOT NULL AND rejected_at IS NULL AND approved_at IS NOT NULL ORDER BY created_at DESC",
+    );
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ data: rows }));
   } catch (error) {
@@ -89,6 +91,29 @@ router.post("/posts/draft", async (req, res) => {
   } catch (error) {
     res.writeHead(500, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ message: "Failed to generate post", error: error.message }));
+  }
+});
+
+router.patch("/posts/:id/approve", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const now = new Date();
+    const { rows } = await pool.query(
+      `UPDATE posts SET approved_at = $1, published_at = $1 WHERE id = $2 RETURNING *`,
+      [now, id],
+    );
+
+    if (!rows[0]) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ message: "Post not found" }));
+    }
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ message: "Post approved successfully", data: rows[0] }));
+  } catch (error) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ message: "Failed to approve post", error: error.message }));
   }
 });
 

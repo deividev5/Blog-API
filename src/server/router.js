@@ -30,6 +30,7 @@ export function createRouter() {
     get: (path, handler) => addRoute("GET", path, handler),
     post: (path, handler) => addRoute("POST", path, handler),
     put: (path, handler) => addRoute("PUT", path, handler),
+    patch: (path, handler) => addRoute("PATCH", path, handler),
     delete: (path, handler) => addRoute("DELETE", path, handler),
 
     async handle(req, res) {
