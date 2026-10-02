@@ -7,7 +7,13 @@ import { createRouter } from "./server/router.js";
 import { parseJsonBody } from "./server/body.js";
 
 // Extraindo as variáveis de ambiente para configuração do servidor HTTP
-const { API_HOST, API_PORT, API_PROTOCOL } = process.env;
+const { API_HOST, API_PORT, API_PROTOCOL, API_KEY } = process.env;
+
+// Verifica se a requisição trouxe a API key válida via "Authorization: Bearer <token>"
+function hasValidApiKey(req) {
+  const [scheme, token] = (req.headers.authorization || "").split(" ");
+  return scheme === "Bearer" && !!token && token === API_KEY;
+}
 
 // Schema do post gerado pelo agente de IA
 const postSchema = z.object({
@@ -21,9 +27,19 @@ await runMigrations();
 const router = createRouter();
 
 router.get("/posts", async (req, res) => {
+  const { searchParams } = new URL(req.url, "http://localhost");
+  const includeAll = searchParams.get("include") === "all";
+
+  if (includeAll && !hasValidApiKey(req)) {
+    res.writeHead(403, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ message: "Missing or invalid API key" }));
+  }
+
   try {
     const { rows } = await pool.query(
-      "SELECT * FROM posts WHERE published_at IS NOT NULL AND rejected_at IS NULL AND approved_at IS NOT NULL ORDER BY created_at DESC",
+      includeAll
+        ? "SELECT * FROM posts ORDER BY created_at DESC"
+        : "SELECT * FROM posts WHERE published_at <= NOW() AND rejected_at IS NULL AND approved_at IS NOT NULL ORDER BY created_at DESC",
     );
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ data: rows }));
@@ -37,7 +53,10 @@ router.get("/posts/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    const { rows } = await pool.query("SELECT * FROM posts WHERE id = $1", [id]);
+    const { rows } = await pool.query(
+      "SELECT * FROM posts WHERE published_at <= NOW() AND rejected_at IS NULL AND approved_at IS NOT NULL AND id = $1",
+      [id],
+    );
     if (!rows[0]) {
       res.writeHead(404, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "Post not found" }));
